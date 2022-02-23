@@ -1,8 +1,19 @@
 <template>
   <div class="home">
-    <button class="btn btn-create" @click="showModal = !showModal">Create</button>
+    <button class="btn btn-create" @click="create()">Create</button>
+    <div class="tabs">
+      <div class="tab" :class="{active: tab === 1}" @click="tab=1">
+        All data
+      </div>
+      <div class="tab" :class="{active: tab === 2}" @click="tab=2">
+        Liked data
+      </div>
+      <div class="tab" :class="{active: tab === 3}" @click="tab=3">
+        Removed data
+      </div>
+    </div>
     <Modal
-     titleModal="create"
+     :titleModal="isCreate? 'create' : 'edit'"
      widthModal="600px"
      :isShow="showModal"
      @closeFrom="showModal = false"
@@ -41,7 +52,7 @@
           <button class="btn btn-cancel" @click="showModal = false">
             Cancel
           </button>
-          <button class="btn btn-submit" @click="submitForm()">
+          <button class="btn btn-submit" :disabled="!dataForm.title" @click="submitForm()">
             Submit
           </button>
         </div>
@@ -50,9 +61,29 @@
     <div>
       <table class="table-custom">
         <tr class="header-custom">
-          <th>Title</th>
+          <th>
+            Title
+            <div style="float: right">
+              <div class="icon-custom" :style="{color: sortType === 2 ? '#bdb1b1' : '#000'}" @click="sortType = 2">
+                &#9650;
+              </div>
+              <div class="icon-custom" :style="{color: sortType === 3 ? '#bdb1b1' : '#000'}" @click="sortType = 3">
+                &#9660;
+              </div>
+            </div>
+          </th>
           <th style="width: 200px">Keywords</th>
-          <th style="width: 200px">Create</th>
+          <th style="width: 200px">
+            Create
+            <div style="float: right">
+              <div class="icon-custom" :style="{color: sortType === 1 ? '#bdb1b1' : '#000'}" @click="sortType = 1">
+                &#9650;
+              </div>
+              <div class="icon-custom" :style="{color: sortType === 0 ? '#bdb1b1' : '#000'}" @click="sortType = 0">
+                &#9660;
+              </div>
+            </div>
+          </th>
           <th style="width: 500px">Action</th>
         </tr>
         <tr v-for="item in listSort" :key="item.id">
@@ -60,8 +91,22 @@
           <td>{{convertKeywords(item.keyword)}}</td>
           <td>{{formatDate(item.created)}}</td>
           <td>
-            <div>
-
+            <div class="action">
+              <div :style="{color: item.status === '1' ? 'red' : '#ff000063'}" @click="changeStatus(item.id, '1')">
+                like
+              </div>
+              <div :style="{color: item.status === '2' ? 'red' : '#ff000063'}" @click="changeStatus(item.id, '2')">
+                unlike
+              </div>
+              <div v-show="tab!==3" class="action2" @click="remove(item.id)">
+                remove
+              </div>
+              <div v-show="tab===3" class="action2" @click="undo(item.id)">
+                undo
+              </div>
+              <div class="action2" @click="edit(item)">
+                edit
+              </div>
             </div>
           </td>
         </tr>
@@ -79,7 +124,7 @@ const defaultData = {
   title: '',
   keyword: '1',
   descript: '',
-  status: 0,
+  status: '0',
   isDelete: false,
   created: ''
 }
@@ -94,38 +139,108 @@ export default {
       listKeywords: listKeywords,
       dataForm: {...defaultData},
       listData: dummyData,
-      sortType: 0
+      sortType: 0,
+      tab: 1,
+      isCreate: true
     }
   },
   computed: {
     listSort () {
-      let temp = [...this.listData];
+      let tempSort = [...this.listData];
       switch(this.sortType) {
         case 0:
-          temp.sort((a, b) => {
+          tempSort.sort((a, b) => {
             const date1 = new Date(a.created);
             const date2 = new Date(b.created);
             return date2.getTime() - date1.getTime();
           });
           break;
+        case 1:
+          tempSort.sort((a, b) => {
+            const date1 = new Date(a.created);
+            const date2 = new Date(b.created);
+            return date1.getTime() - date2.getTime();
+          });
+          break;
+        case 2:
+          tempSort.sort((a, b) => {
+            if (a > b) {
+              return 1;
+            }
+            if (a.title < b.title) {
+              return -1
+            }
+            return 0
+          });
+          break;
+        case 3:
+          tempSort.sort((a, b) => {
+            if (a.title > b.title) {
+              return -1;
+            }
+            if (a.title < b.title) {
+              return 1
+            }
+            return 0
+          });
+          break;
+        default:
+          break;
       }
-      return temp;
+      let tempList = []
+      switch(this.tab) {
+        case 1:
+          tempList = tempSort.filter(item => !item.isDelete);
+          break;
+        case 2:
+          tempList = tempSort.filter(item => !item.isDelete && item.status === '1');
+          break;
+        case 3:
+          tempList = tempSort.filter(item => item.isDelete);
+          break;
+        default:
+          break;
+      }
+      return tempList;
+    }
+  },
+  mounted() {
+    const listTemp = localStorage.getItem("listStorage");
+    if (listTemp) {
+      this.listData = JSON.parse(listTemp);
     }
   },
   methods: {
+    create() {
+      this.showModal = true;
+      this.isCreate = true;
+      this.dataForm = {...defaultData};
+    },
+    edit(item) {
+      this.showModal = true;
+      this.isCreate = false;
+      this.dataForm = {...item};
+    },
     submitForm() {
-      this.dataForm.id = Math.random();
-      this.dataForm.created = new Date();
-      this.listData.push(this.dataForm);
+      if (this.isCreate) {
+        this.dataForm.id = Math.random();
+        this.dataForm.created = new Date();
+        this.listData.push(this.dataForm);
+      } else {
+        const index = this.listData.findIndex(item => item.id === this.dataForm.id);
+        if (index >= 0) {
+          this.$set(this.listData, index, this.dataForm);
+        }
+      }
       this.dataForm = {...defaultData};
       this.showModal = false;
+      localStorage.setItem("listStorage", JSON.stringify(this.listData));
     },
     convertKeywords (keyword) {
       const text = this.listKeywords.find(item => item.id === keyword);
       return text ? text.value : ''
     },
     formatDate (date) {
-      console.log(date)
       const dateTemp = new Date(date)
       const month = dateTemp.getMonth() + 1;
       const day = dateTemp.getDate();
@@ -134,6 +249,27 @@ export default {
       const mm = dateTemp.getMinutes();
       const ss = dateTemp.getSeconds();
       return `${day}/${month}/${year} ${hh}:${mm}:${ss}`
+    },
+    changeStatus(id, status) {
+      const index = this.listData.findIndex(item => item.id === id);
+      if (index >= 0) {
+        this.listData[index].status = status;
+        localStorage.setItem("listStorage", JSON.stringify(this.listData));
+      }
+    },
+    remove(id) {
+      const index = this.listData.findIndex(item => item.id === id);
+      if (index >= 0) {
+        this.listData[index].isDelete = true;
+        localStorage.setItem("listStorage", JSON.stringify(this.listData));
+      }
+    },
+    undo(id) {
+      const index = this.listData.findIndex(item => item.id === id);
+      if (index >= 0) {
+        this.listData[index].isDelete = false;
+        localStorage.setItem("listStorage", JSON.stringify(this.listData));
+      }
     }
   }
 }
@@ -177,13 +313,13 @@ export default {
     font-size: 18px;
     border: none;
     border-radius: 5px;
+    &:hover {
+      opacity: 0.6;
+    }
   }
   .btn-cancel {
     background: red;
     color: #fff;
-    &:hover {
-      opacity: 0.6;
-    }
   }
   .btn-submit {
     background: rgb(54, 176, 247);
@@ -193,13 +329,18 @@ export default {
       opacity: 0.6;
     }
   }
+  button {
+    &:disabled {
+      opacity: 0.3;
+      &:hover {
+        opacity: 0.3;
+      }
+    }
+  }
   .btn-create {
     background: rgb(92, 252, 113);
     color: #000;
     margin-bottom: 10px;
-    &:hover {
-      opacity: 0.6;
-    }
   }
   .table-custom {
     border-collapse: collapse;
@@ -214,6 +355,36 @@ export default {
       border: 1px solid #dddddd;
       text-align: left;
       padding: 8px;
+    }
+    .icon-custom {
+      font-size: 10px;
+      margin-left: 8px;
+      cursor: pointer;
+    }
+    .action {
+      display: flex;
+      div {
+        margin-right: 18px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+      .action2 {
+        color: rgb(17, 13, 241);
+      }
+    }
+  }
+  .tabs {
+    display: flex;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    .tab {
+      margin-right: 10px;
+      cursor: pointer;
+    }
+    .active {
+      text-decoration: underline;
+      font-weight: bold;
+      color: blue;
     }
   }
 </style>

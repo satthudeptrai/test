@@ -75,7 +75,6 @@ export default {
             font-weight: bold;
         }
         .close:hover{
-            color: black;
             text-decoration: none;
             cursor: pointer;
         }

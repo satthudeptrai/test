@@ -52,7 +52,7 @@ export const dummyData = [
         title: 'data 3',
         keyword: '3',
         descript: 'this is data 3',
-        status: '3',
+        status: '2',
         isDelete: false,
         created: 'Wed Feb 23 2022 18:49:31 GMT+0700 (Giờ Đông Dương)'
     },
