@@ -58,6 +58,12 @@
         </div>
       </div>
     </Modal>
+    <div class="search-form">
+      <input type="text" class="txt-search" v-model="search">
+      <div v-show="search" class="clear" @click="search = ''">
+        x
+      </div>
+    </div>
     <div>
       <table class="table-custom">
         <tr class="header-custom">
@@ -141,7 +147,8 @@ export default {
       listData: dummyData,
       sortType: 0,
       tab: 1,
-      isCreate: true
+      isCreate: true,
+      search: ''
     }
   },
   computed: {
@@ -200,6 +207,10 @@ export default {
           break;
         default:
           break;
+      }
+      if (this.search) {
+        let searchList = tempList.filter(item => item.title.includes(this.search));
+        return searchList;
       }
       return tempList;
     }
@@ -275,6 +286,25 @@ export default {
 }
 </script>
 <style lang="scss" scoped>
+  .search-form {
+    position: relative;
+    margin-bottom: 10px;
+    .txt-search {
+      padding: 5px 0;
+      border: none;
+      border-bottom: solid 1px gray;
+      outline: none;
+      font-size: 16px;
+      width: 400px;
+    }
+    .clear {
+      position: absolute;
+      top: 8px;
+      left: 390px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+  }
   .label-input {
     font-size: 14px;
     margin-bottom: 5px;
